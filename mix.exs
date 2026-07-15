@@ -8,7 +8,9 @@ defmodule LocalizeMcp.MixProject do
     [
       app: :localize_mcp,
       version: @version,
-      elixir: "~> 1.17",
+      # anubis_mcp requires Elixir 1.18+ (it uses the JSON.Encoder
+      # protocol), so the floor cannot follow localize down to 1.17.
+      elixir: "~> 1.18",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       description: description(),
