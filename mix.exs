@@ -101,6 +101,20 @@ defmodule LocalizeMcp.MixProject do
       # build in the same environment they are published from.
       {:ex_doc, "~> 0.30", only: [:dev, :release], runtime: false},
       {:dialyxir, "~> 1.4", only: :dev, runtime: false}
-    ]
+    ] ++ maybe_json_polyfill()
+  end
+
+  # Localize uses the OTP 27+ `:json` module. On OTP 26 the
+  # json_polyfill package provides it; consumers on OTP 26 add
+  # {:json_polyfill, "~> 0.2 or ~> 1.0"} to their own deps (see the
+  # Localize README). This dev/test conditional keeps this project's
+  # own CI compiling on OTP 26 and is scheduled for removal when
+  # Localize drops OTP 26 support on December 31st, 2026.
+  defp maybe_json_polyfill do
+    if Code.ensure_loaded?(:json) do
+      []
+    else
+      [{:json_polyfill, "~> 0.2 or ~> 1.0", only: [:dev, :test]}]
+    end
   end
 end
