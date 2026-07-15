@@ -2,7 +2,7 @@ defmodule LocalizeMcp do
   @moduledoc """
   Top-level entry point for the Localize MCP server.
 
-  The interesting code lives in `LocalizeMcp.Server` (Hermes-MCP server
+  The interesting code lives in `LocalizeMcp.Server` (Anubis-MCP server
   with tool handlers) and the per-tool modules under
   `LocalizeMcp.Tools.*`. This module exists primarily as the
   documented public surface and as a place to hang version / boot

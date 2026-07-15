@@ -45,7 +45,7 @@ defmodule LocalizeMcp.Tools.ResolveLocale do
           language: maybe_inspect(tag.language),
           script: maybe_inspect(tag.script),
           territory: maybe_inspect(tag.territory),
-          variants: Enum.map(tag.language_variants || [], &inspect/1),
+          variants: Enum.map(tag.language_variants, &inspect/1),
           requested_locale_id: maybe_inspect(tag.requested_locale_id)
         }
 
@@ -111,10 +111,7 @@ defmodule LocalizeMcp.Tools.ResolveLocale do
   end
 
   defp tag_label(%Localize.LanguageTag{} = tag) do
-    case Localize.LanguageTag.to_string(tag) do
-      s when is_binary(s) -> s
-      _ -> inspect(tag)
-    end
+    Localize.LanguageTag.to_string(tag)
   rescue
     _ -> inspect(tag)
   end

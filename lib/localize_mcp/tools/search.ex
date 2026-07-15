@@ -46,6 +46,22 @@ defmodule LocalizeMcp.Tools.Search do
       String.starts_with?(name, query) -> 80
       String.contains?(name, query) -> 60
       String.contains?(doc, query) -> 30
+      true -> token_score(name, entry, String.split(query))
+    end
+  end
+
+  # Multi-word queries match when every token appears somewhere in
+  # the entry's name or doc excerpt, in any order — "format
+  # currency" finds `Localize.Number.to_string/2` through its
+  # `:currency` option documentation.
+  defp token_score(_name, _entry, tokens) when length(tokens) < 2, do: 0
+
+  defp token_score(name, entry, tokens) do
+    haystack = name <> " " <> Map.get(entry, :doc_text, "")
+
+    cond do
+      Enum.all?(tokens, &String.contains?(name, &1)) -> 50
+      Enum.all?(tokens, &String.contains?(haystack, &1)) -> 25
       true -> 0
     end
   end

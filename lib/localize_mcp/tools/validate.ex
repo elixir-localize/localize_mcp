@@ -32,7 +32,10 @@ defmodule LocalizeMcp.Tools.Validate do
   defp run("calendar", value), do: wrap("calendar", value, &Localize.validate_calendar/1)
   defp run("territory", value), do: wrap("territory", value, &Localize.validate_territory/1)
   defp run("script", value), do: wrap("script", value, &Localize.validate_script/1)
-  defp run("number_system", value), do: wrap("number_system", value, &Localize.validate_number_system/1)
+
+  defp run("number_system", value),
+    do: wrap("number_system", value, &Localize.validate_number_system/1)
+
   defp run("language", value), do: validate_language(value)
   defp run("locale", value), do: validate_locale(value)
 

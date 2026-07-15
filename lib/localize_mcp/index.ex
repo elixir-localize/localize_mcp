@@ -84,7 +84,9 @@ defmodule LocalizeMcp.Index do
   def build do
     packages_to_index()
     |> Enum.flat_map(&entries_for_package/1)
-    |> Enum.sort_by(fn entry -> {entry.module, entry.function || :__module__, entry.arity || 0} end)
+    |> Enum.sort_by(fn entry ->
+      {entry.module, entry.function || :__module__, entry.arity || 0}
+    end)
   end
 
   defp packages_to_index do
@@ -120,6 +122,12 @@ defmodule LocalizeMcp.Index do
 
   defp entries_for_module(module, app) do
     case Code.fetch_docs(module) do
+      # A hidden module (`@moduledoc false`) is internal API: its
+      # functions are excluded too, so the tool surface matches the
+      # documented surface.
+      {:docs_v1, _, _, _, :hidden, _, _} ->
+        []
+
       {:docs_v1, _, _, _, module_doc, _, function_docs} ->
         module_entry = module_entry(module, module_doc, app)
         function_entries = Enum.flat_map(function_docs, &function_entry(&1, module, app))
@@ -130,7 +138,6 @@ defmodule LocalizeMcp.Index do
     end
   end
 
-  defp module_entry(_module, :hidden, _app), do: nil
   defp module_entry(_module, :none, _app), do: nil
 
   defp module_entry(module, %{} = doc_map, app) do
@@ -141,12 +148,11 @@ defmodule LocalizeMcp.Index do
       kind: :module,
       signature: inspect(module),
       doc_first_line: first_line(doc_map),
+      doc_text: doc_excerpt(doc_map),
       group: group_for(module),
       package: app
     }
   end
-
-  defp module_entry(_module, _, _), do: nil
 
   defp function_entry({{kind, name, arity}, _anno, signature, doc, _meta}, module, app)
        when kind in [:function, :macro, :callback, :type] do
@@ -163,6 +169,7 @@ defmodule LocalizeMcp.Index do
             kind: kind,
             signature: Enum.join(signature, " "),
             doc_first_line: first_line(doc),
+            doc_text: doc_excerpt(doc),
             group: group_for(module),
             package: app
           }
@@ -180,6 +187,17 @@ defmodule LocalizeMcp.Index do
   end
 
   defp first_line(_), do: ""
+
+  # A longer lowercased excerpt used by multi-word search matching
+  # (long enough to reach a typical `### Options` section). The
+  # first line remains the human-facing summary.
+  defp doc_excerpt(%{"en" => doc}) when is_binary(doc) do
+    doc
+    |> String.slice(0, 2000)
+    |> String.downcase()
+  end
+
+  defp doc_excerpt(_), do: ""
 
   # Lifted from `mix.exs`'s `groups_for_modules/0` in the upstream
   # `localize` repo. Kept in sync by hand — there's no public API to
@@ -200,11 +218,12 @@ defmodule LocalizeMcp.Index do
     {~r/Gettext(?!\w*Error)/, "Gettext"},
     {~r/Localize\.List(?!\w*Error)/, "Lists"},
     {~r/Localize\.Collation(?!\w*Error)/, "Collation"},
-    {~r/Localize\.Util(?!\w*Error)/, "Utilities"},
     {~r/Localize\.Nif(?!\w*Error)/, "NIF"},
     {~r/^Localize\.\w+Error$/, "Exceptions"},
     {~r/^Calendrical(\.|$)/, "Calendars"},
-    {~r/^LocalizeWeb(\.|$)/, "Web"}
+    {~r/^LocalizeWeb(\.|$)/, "Web"},
+    # The bare top module carries the locale get/put/validate API.
+    {~r/^Localize$/, "Localize"}
   ]
 
   defp group_for(module) do

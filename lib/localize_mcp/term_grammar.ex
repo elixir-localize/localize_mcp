@@ -175,7 +175,7 @@ defmodule LocalizeMcp.TermGrammar do
   Symmetric with `decode/1` over the supported shapes.
 
   """
-  @spec encode(term()) :: term()
+  @spec encode(term()) :: nil | boolean() | number() | binary() | [term()] | map()
   def encode(nil), do: nil
   def encode(true), do: true
   def encode(false), do: false
@@ -196,8 +196,7 @@ defmodule LocalizeMcp.TermGrammar do
   def encode(list) when is_list(list) do
     if Keyword.keyword?(list) and list != [] do
       %{
-        "$keyword" =>
-          Enum.map(list, fn {k, v} -> [Atom.to_string(k), encode(v)] end)
+        "$keyword" => Enum.map(list, fn {k, v} -> [Atom.to_string(k), encode(v)] end)
       }
     else
       Enum.map(list, &encode/1)
@@ -232,7 +231,12 @@ defmodule LocalizeMcp.TermGrammar do
   `localize_term_grammar` tool response.
 
   """
-  @spec reference() :: map()
+  @spec reference() :: %{
+          summary: String.t(),
+          passthrough: [String.t()],
+          tagged_forms: [map()],
+          limits: %{max_input_bytes: pos_integer()}
+        }
   def reference do
     %{
       summary:

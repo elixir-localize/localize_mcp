@@ -1,6 +1,6 @@
 defmodule LocalizeMcp.Server do
   @moduledoc """
-  The Hermes-MCP server for Localize.
+  The Anubis-MCP server for Localize.
 
   Tools are registered in `init/2` and dispatched via `handle_tool/3`.
   Each tool's implementation lives in `LocalizeMcp.Tools.<Name>` so
@@ -9,11 +9,12 @@ defmodule LocalizeMcp.Server do
 
   """
 
-  use Hermes.Server,
+  use Anubis.Server,
     name: "Localize MCP",
     version: "0.1.0",
     capabilities: [:tools]
 
+  alias Anubis.Server.Response
   alias LocalizeMcp.Tools
 
   @impl true
@@ -37,47 +38,60 @@ defmodule LocalizeMcp.Server do
 
   @impl true
   def handle_tool_call("localize_search", params, frame) do
-    {:reply, Tools.Search.call(params), frame}
+    reply(Tools.Search.call(string_keyed(params)), frame)
   end
 
   def handle_tool_call("localize_browse", params, frame) do
-    {:reply, Tools.Browse.call(params), frame}
+    reply(Tools.Browse.call(string_keyed(params)), frame)
   end
 
   def handle_tool_call("localize_doc", params, frame) do
-    {:reply, Tools.Doc.call(params), frame}
+    reply(Tools.Doc.call(string_keyed(params)), frame)
   end
 
   def handle_tool_call("localize_examples", params, frame) do
-    {:reply, Tools.Examples.call(params), frame}
+    reply(Tools.Examples.call(string_keyed(params)), frame)
   end
 
   def handle_tool_call("localize_options", params, frame) do
-    {:reply, Tools.Options.call(params), frame}
+    reply(Tools.Options.call(string_keyed(params)), frame)
   end
 
   def handle_tool_call("localize_atoms", params, frame) do
-    {:reply, Tools.Atoms.call(params), frame}
+    reply(Tools.Atoms.call(string_keyed(params)), frame)
   end
 
   def handle_tool_call("localize_errors", params, frame) do
-    {:reply, Tools.Errors.call(params), frame}
+    reply(Tools.Errors.call(string_keyed(params)), frame)
   end
 
   def handle_tool_call("localize_resolve_locale", params, frame) do
-    {:reply, Tools.ResolveLocale.call(params), frame}
+    reply(Tools.ResolveLocale.call(string_keyed(params)), frame)
   end
 
   def handle_tool_call("localize_validate", params, frame) do
-    {:reply, Tools.Validate.call(params), frame}
+    reply(Tools.Validate.call(string_keyed(params)), frame)
   end
 
   def handle_tool_call("localize_invoke", params, frame) do
-    {:reply, Tools.Invoke.call(params), frame}
+    reply(Tools.Invoke.call(string_keyed(params)), frame)
   end
 
   def handle_tool_call("localize_term_grammar", params, frame) do
-    {:reply, Tools.TermGrammar.call(params), frame}
+    reply(Tools.TermGrammar.call(string_keyed(params)), frame)
+  end
+
+  # Anubis validates tool arguments against the registered schema
+  # (atomising the top-level keys) and expects an
+  # `Anubis.Server.Response` back. The tool implementations keep
+  # their original contract — string-keyed params in, a plain result
+  # map out — so their unit tests stay transport-independent.
+  defp reply(result, frame) do
+    {:reply, Response.json(Response.tool(), result), frame}
+  end
+
+  defp string_keyed(params) do
+    Map.new(params, fn {key, value} -> {to_string(key), value} end)
   end
 
   # ── Tool registration ─────────────────────────────────────────
@@ -91,12 +105,13 @@ defmodule LocalizeMcp.Server do
       input_schema: %{
         query:
           {:required, :string,
-           description: "The search query. Matched against module names, function names, and doc first lines."},
+           description:
+             "The search query. Matched against module names, function names, and doc first lines."},
         kind:
           {:string,
-           description: "Restrict to a kind. One of \"module\", \"function\", \"type\", \"callback\"."},
-        limit:
-          {:integer, description: "Maximum results to return. Default 20."}
+           description:
+             "Restrict to a kind. One of \"module\", \"function\", \"type\", \"callback\"."},
+        limit: {:integer, description: "Maximum results to return. Default 20."}
       },
       annotations: %{read_only: true}
     )
@@ -112,10 +127,10 @@ defmodule LocalizeMcp.Server do
         group:
           {:required, :string,
            description:
-             "The group name. Known groups: Protocols, Numbers, Dates and Times, Locale, " <>
-               "Language Tag, Calendars, Currencies, Languages, Territories, Scripts, " <>
-               "Units of Measure, Messages, Gettext, Lists, Collation, Utilities, NIF, " <>
-               "Exceptions, Web."}
+             "The group name. Known groups: Localize (the top-level module), Protocols, " <>
+               "Numbers, Dates and Times, Locale, Language Tag, Calendars, Currencies, " <>
+               "Languages, Territories, Scripts, Units of Measure, Messages, Gettext, " <>
+               "Lists, Collation, NIF, Exceptions, Web (when localize_web is loaded)."}
       },
       annotations: %{read_only: true}
     )
@@ -134,8 +149,7 @@ defmodule LocalizeMcp.Server do
                "\"Elixir.Localize.Number\"."},
         function:
           {:string, description: "Optional function name to scope to a specific function."},
-        arity:
-          {:integer, description: "Optional arity to disambiguate overloaded functions."}
+        arity: {:integer, description: "Optional arity to disambiguate overloaded functions."}
       },
       annotations: %{read_only: true}
     )
@@ -203,8 +217,7 @@ defmodule LocalizeMcp.Server do
           "module adopts Localize.Exception) the exhaustive list of documented :reason atoms. " <>
           "Use this when handling errors structurally.",
       input_schema: %{
-        module:
-          {:string, description: "Optional. Scope to one Localize.*Error module."}
+        module: {:string, description: "Optional. Scope to one Localize.*Error module."}
       },
       annotations: %{read_only: true}
     )
@@ -235,7 +248,8 @@ defmodule LocalizeMcp.Server do
       input_schema: %{
         kind:
           {:required, :string,
-           description: "One of: currency, calendar, territory, script, number_system, language, locale."},
+           description:
+             "One of: currency, calendar, territory, script, number_system, language, locale."},
         value: {:required, :string, description: "The value to validate."}
       },
       annotations: %{read_only: true}

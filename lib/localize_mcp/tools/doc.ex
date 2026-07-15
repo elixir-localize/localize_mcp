@@ -20,9 +20,6 @@ defmodule LocalizeMcp.Tools.Doc do
 
           {:error, reason} ->
             %{error: "Code.fetch_docs/1 failed: #{inspect(reason)}", module: inspect(module)}
-
-          other ->
-            %{error: "unexpected fetch_docs result: #{inspect(other)}", module: inspect(module)}
         end
 
       {:error, reason} ->

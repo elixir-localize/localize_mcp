@@ -7,12 +7,10 @@ defmodule LocalizeMcp.Application do
   def start(_type, _args) do
     children =
       [
-        # Hermes registry — owns the per-server process registry.
-        Hermes.Server.Registry,
-
         # Build the documentation / search index once at boot. The
         # tool handlers read from it via `:persistent_term` so
-        # per-call cost is a single map lookup.
+        # per-call cost is a single map lookup. The Anubis server
+        # supervisor (started below) manages its own registry.
         LocalizeMcp.Index
       ] ++ maybe_server_child()
 

@@ -16,8 +16,6 @@ defmodule LocalizeMcp.MixProject do
       docs: docs(),
       name: "Localize MCP",
       source_url: @source_url,
-      escript: escript(),
-      aliases: aliases(),
       dialyzer: [
         plt_add_apps: ~w(mix)a,
         flags: [
@@ -51,7 +49,8 @@ defmodule LocalizeMcp.MixProject do
       licenses: ["Apache-2.0"],
       links: %{
         "GitHub" => @source_url,
-        "Changelog" => @source_url <> "/blob/v#{@version}/CHANGELOG.md"
+        "Readme" => "https://hexdocs.pm/localize_mcp/readme.html",
+        "Changelog" => "https://hexdocs.pm/localize_mcp/changelog.html"
       },
       files: [
         "lib",
@@ -83,40 +82,25 @@ defmodule LocalizeMcp.MixProject do
 
   defp deps do
     [
-      # The library being introspected. Required.
-      {:localize, "~> 0.38"},
+      # The library being introspected. Required. The floor tracks
+      # recent Localize releases because the tools introspect the
+      # current module layout, docs groups and options surface.
+      {:localize, "~> 0.49"},
 
       # Optional companions. Detected at runtime via Code.ensure_loaded?/1;
       # the server runs identically with neither, either, or both.
       {:calendrical, "~> 0.1", optional: true},
       {:localize_web, "~> 0.1", optional: true},
 
-      # MCP transport + tool dispatch.
-      {:hermes_mcp, "~> 0.10"},
+      # MCP transport + tool dispatch. Anubis is the continuation of
+      # the renamed hermes_mcp project; hermes_mcp 0.14.x is
+      # unmaintained and its stdio transport cannot decode frames.
+      {:anubis_mcp, "~> 1.6"},
 
-      # Dev / docs / test.
-      {:ex_doc, "~> 0.30", only: :dev, runtime: false},
+      # Dev / docs / test. ex_doc is available in :release so docs
+      # build in the same environment they are published from.
+      {:ex_doc, "~> 0.30", only: [:dev, :release], runtime: false},
       {:dialyxir, "~> 1.4", only: :dev, runtime: false}
-    ]
-  end
-
-  # `mix localize_mcp` boots the stdio server for use under Claude
-  # Desktop / Claude Code / Zed configurations. The escript form
-  # below is the same entry point bundled as a standalone binary
-  # via `mix escript.build`, useful when users want a single file
-  # to drop into their PATH.
-  defp escript do
-    [
-      main_module: LocalizeMcp.CLI,
-      name: "localize_mcp"
-    ]
-  end
-
-  defp aliases do
-    [
-      # Convenience: `mix localize_mcp` (the Mix task) runs the server
-      # without first building an escript. See lib/mix/tasks/localize_mcp.ex.
-      "localize_mcp.archive": ["archive.build"]
     ]
   end
 end

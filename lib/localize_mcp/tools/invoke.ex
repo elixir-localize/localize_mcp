@@ -43,7 +43,6 @@ defmodule LocalizeMcp.Tools.Invoke do
       # tuple), so call/1's caller sees a consistent shape.
       %{} = error_map -> error_map
       {:error, error_map} when is_map(error_map) -> error_map
-      other -> %{error: "unexpected", detail: inspect(other)}
     end
   end
 

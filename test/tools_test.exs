@@ -89,7 +89,8 @@ defmodule LocalizeMcp.ToolsTest do
     end
 
     test "all five translate capabilities are known" do
-      for capability <- ~w(translate translate_setup translate_headless translate_phoenix translate_liveview) do
+      for capability <-
+            ~w(translate translate_setup translate_headless translate_phoenix translate_liveview) do
         assert capability in Tools.Examples.known_capabilities(),
                "#{capability} missing from @capabilities"
 

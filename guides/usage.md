@@ -1,6 +1,6 @@
 # Using the Localize MCP server
 
-A walk-through of what the server is for, how to install it, how to wire it into Claude Desktop / Claude Code / Zed, and how each of the eleven tools is meant to be used.
+A walk-through of what the server is for, how to install it, how to wire it into an AI host (Claude Code, Claude Desktop, Codex, Zed, …), and how each of the eleven tools is meant to be used.
 
 ## What it does
 
@@ -14,11 +14,7 @@ This MCP server replaces all of that grepping with eleven typed tool calls backe
 
 ## Installing
 
-You have three options, in increasing order of "set up once, forget".
-
-### Option 1: As a project-local dev dependency
-
-Add to your project's `mix.exs`:
+The server runs from an Elixir project that declares the dependency, so the agent sees exactly the Localize version your project pins. Add to your project's `mix.exs`:
 
 ```elixir
 def deps do
@@ -28,120 +24,27 @@ def deps do
 end
 ```
 
-Then `mix deps.get`. The server is invoked via `mix localize_mcp` from inside that project's directory. The Localize version your project pins is the version the agent sees.
+Then `mix deps.get && mix compile`. The server is invoked via `mix localize_mcp` from inside that project's directory: it speaks MCP over stdio, with JSON-RPC frames on stdin/stdout and all logging on stderr. Compile before wiring a host — a cold compile triggered by the host would print compiler output on the protocol channel.
 
-### Option 2: As a standalone escript
+## Wiring into an AI host
 
-Build the standalone binary once:
-
-```sh
-cd /path/to/localize_mcp
-MIX_ENV=prod mix escript.build
-```
-
-Copy the resulting `localize_mcp` binary anywhere on your `PATH`:
+The [Host configuration guide](https://hexdocs.pm/localize_mcp/host_configuration.html) has copy-paste configuration for Claude Code, Claude Desktop, Codex CLI, ChatGPT, and Zed. The quickest start, for Claude Code, run inside the project directory:
 
 ```sh
-cp localize_mcp ~/bin/
+claude mcp add localize -- mix localize_mcp
 ```
 
-The binary embeds all of Localize at the version it was built against. It does not need an Elixir project in the calling directory. It does need an `erl` runtime on `PATH`.
-
-### Option 3: As a Mix archive (recommended for AI hosts)
-
-This is the "system-wide install, reference from any host config" path.
-
-```sh
-mix archive.install hex localize_mcp
-```
-
-(Or `mix archive.install ./localize_mcp-0.1.0.ez` if you've built the archive locally.) The archive lands at `~/.mix/escripts/localize_mcp`. Reference that absolute path from your AI host's config and you're done — no per-project changes needed when you want a new project to talk to the server.
-
-## Wiring into Claude Desktop
-
-Edit Claude Desktop's config file (creating it if it doesn't exist):
-
-* macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
-* Windows: `%APPDATA%\Claude\claude_desktop_config.json`
-
-Add a server entry under `mcpServers`. Using the recommended archive install:
-
-```json
-{
-  "mcpServers": {
-    "localize": {
-      "command": "/Users/<you>/.mix/escripts/localize_mcp"
-    }
-  }
-}
-```
-
-Restart Claude Desktop fully (quit, don't just close the window). On startup Claude will spawn the server, run the MCP `initialize` handshake, and surface eleven new tools in the host's tool list.
-
-If you'd rather invoke via `mix` (so the agent sees whichever Localize version your current project pins), use the alternate shape:
-
-```json
-{
-  "mcpServers": {
-    "localize": {
-      "command": "mix",
-      "args": ["localize_mcp"],
-      "cwd": "/Users/<you>/dev/some_project_with_localize"
-    }
-  }
-}
-```
-
-The `cwd` is required so `mix` finds the `mix.exs` that pins `:localize_mcp`. The agent then sees exactly the Localize / Calendrical / localize_web versions that project depends on.
-
-## Wiring into Claude Code
-
-Claude Code reads MCP config from `~/.claude/settings.json` (global) or `.claude/settings.json` (project-local). Either:
-
-```json
-{
-  "mcpServers": {
-    "localize": {
-      "command": "/Users/<you>/.mix/escripts/localize_mcp"
-    }
-  }
-}
-```
-
-Project-local config is useful when different projects want different Localize versions surfaced.
-
-## Wiring into Zed
-
-Zed reads MCP context servers from its main settings file. Add under `context_servers`:
-
-```json
-{
-  "context_servers": {
-    "localize": {
-      "command": {
-        "path": "/Users/<you>/.mix/escripts/localize_mcp",
-        "args": []
-      }
-    }
-  }
-}
-```
+Hosts launched from the desktop (Claude Desktop, Zed) need two things the guide covers in detail: a `cd` into the project (they have no per-project working directory) and a login shell so `mix` resolves through your version manager — the `command` shape for those hosts is `sh -lc "cd /path/to/project && mix localize_mcp"`.
 
 ## Verifying
 
 Three-step smoke test inside any chat with the host:
 
-1. *"Use `localize_search` to find functions that format currencies."* — should return a ranked list including `Localize.Number.to_string/2` and `Localize.Currency.display_name/2`.
+1. *"Use `localize_search` to find functions that format currencies."* — should return a ranked list of currency-formatting functions such as `Localize.Currency.currency_format_from_locale/1` and `Localize.Number.Formatter` entries.
 2. *"Use `localize_doc` on `Localize.Number.to_string` arity 2."* — should return the function's full `@doc` and `@spec`.
 3. *"Use `localize_invoke` to format 1234 as USD with `Localize.Number.to_string/2`."* — should return `{:ok, "$1,234.00"}` encoded via the term grammar.
 
-If step 1 fails, the server isn't being launched. Check the host's MCP log:
-
-* Claude Desktop, macOS: `~/Library/Logs/Claude/mcp.log`
-* Claude Desktop, Windows: `%APPDATA%\Claude\logs\mcp.log`
-* Claude Code: `~/.claude/logs/mcp.log`
-
-The most common failure is a wrong absolute path on the `command` field, followed by Elixir not being on `PATH` when the host launches the binary.
+If step 1 fails, the server isn't being launched. Check the host's MCP diagnostics (`claude mcp list` for Claude Code; `~/Library/Logs/Claude/mcp*.log` for Claude Desktop on macOS). The most common failures are `mix` not resolving on the host's PATH and the project not being compiled yet.
 
 ## The eleven tools
 
@@ -161,7 +64,7 @@ Returns ranked matches with one-line summaries. `kind` is optional; useful value
 { "group": "Numbers" }
 ```
 
-Known groups: `Protocols`, `Numbers`, `Dates and Times`, `Locale`, `Language Tag`, `Calendars`, `Currencies`, `Languages`, `Territories`, `Scripts`, `Units of Measure`, `Messages`, `Gettext`, `Lists`, `Collation`, `Utilities`, `NIF`, `Exceptions`, `Web` (when `localize_web` is loaded).
+Known groups: `Localize` (the top-level module), `Protocols`, `Numbers`, `Dates and Times`, `Locale`, `Language Tag`, `Calendars`, `Currencies`, `Languages`, `Territories`, `Scripts`, `Units of Measure`, `Messages`, `Gettext`, `Lists`, `Collation`, `NIF`, `Exceptions`, `Web` (when `localize_web` is loaded).
 
 ### Documentation
 
@@ -249,7 +152,7 @@ Returns `{kind, input, valid?, canonical, error?}`. Kinds: `currency`, `calendar
 }
 ```
 
-The allowlist is enumerated in `priv/mcp/invocable.exs` — currently 52 read-only functions covering formatting, parsing, validation, and display-name lookups. Anything not allowlisted returns `not_invokable`. Each call runs in a `Task.async/1` with a 5 second timeout and an 8 MiB heap cap.
+The allowlist is enumerated in `priv/mcp/invocable.exs` — read-only functions covering formatting, parsing, validation, and display-name lookups. Anything not allowlisted returns `not_invokable`. Each call runs in a `Task.async/1` with a 5 second timeout and a 64 MB heap cap.
 
 **`localize_term_grammar`** — the JSON ↔ Elixir term grammar used by `localize_invoke`.
 
@@ -305,7 +208,7 @@ The server runs identically with neither, either, or both present.
 
 ## Troubleshooting
 
-**The host doesn't list any `localize_*` tools.** The server isn't being launched. Check the MCP log for spawn errors. The most common cause is the `command` path pointing at a binary that doesn't exist or isn't executable. `chmod +x` the escript if needed.
+**The host doesn't list any `localize_*` tools.** The server isn't being launched. Check the MCP log for spawn errors. The most common causes are `mix` not resolving on the host's PATH (use `sh -lc` so a login shell activates your version manager) and the wrong project directory in the `cd`.
 
 **`localize_invoke` returns `not_invokable` for a function I know exists.** The MFA isn't on the allowlist in `priv/mcp/invocable.exs`. The allowlist is deliberately read-only; mutating helpers, NIF entry points, and Mix tasks are excluded. File an issue (or a PR) if the function should be invokable.
 
@@ -317,7 +220,7 @@ The server runs identically with neither, either, or both present.
 
 ## Reading further
 
-* `guides/host_configuration.md` — focused reference for each AI host's config schema.
+* [Host configuration guide](https://hexdocs.pm/localize_mcp/host_configuration.html) — focused reference for each AI host's config schema.
 * `priv/mcp/invocable.exs` — the full allowlist of invokable MFAs.
 * `priv/mcp/examples/` — the curated example library, one file per capability.
 * `priv/mcp/options/` — the per-module options metadata. Currently `Localize.Number` is curated; more modules are added each release.
