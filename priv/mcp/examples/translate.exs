@@ -52,7 +52,7 @@
       end
     end
     ''',
-    expected_output:
+    prose:
       "Rewrites to a Gettext lookup of msgid \"Hello, {$name}!\" with bindings %{name: name}."
   },
   %{

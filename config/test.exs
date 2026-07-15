@@ -6,7 +6,12 @@ import Config
 # competing for the terminal's stdin.
 config :localize_mcp, start_server: false
 
-# Quieten Hermes-MCP / Logger noise during the test run. Tools
+# The examples runner executes curated snippets that use :de, :ar
+# and :ja locales; allow the (hash-manifest-verified) download on
+# first use. The files cache under _build, which CI also caches.
+config :localize, allow_runtime_locale_download: true
+
+# Quieten Anubis-MCP / Logger noise during the test run. Tools
 # that need to assert on log output should call
 # `Logger.configure(level: :info)` themselves.
 config :logger, level: :warning

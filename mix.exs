@@ -87,7 +87,7 @@ defmodule LocalizeMcp.MixProject do
       # The library being introspected. Required. The floor tracks
       # recent Localize releases because the tools introspect the
       # current module layout, docs groups and options surface.
-      {:localize, "~> 0.49"},
+      {:localize, "~> 0.50"},
 
       # Optional companions. Detected at runtime via Code.ensure_loaded?/1;
       # the server runs identically with neither, either, or both.
